@@ -3,7 +3,7 @@ import subprocess
 
 def get_hdfs_file_count(cluster_url, hdfs_location):
     try:
-        command = f"hdfs dfs -count {hdfs_location}"
+        command = f"hdfs dfs -count {cluster_url}/{hdfs_location}"
         process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = process.communicate()
         if error:
@@ -71,8 +71,3 @@ if __name__ == "__main__":
         print("No HDFS locations found in the file.")
     else:
         compare_file_counts(cluster1_url, cluster2_url, hdfs_locations)
-
-    # Specify the HDFS locations you want to check file counts for.
-    hdfs_locations = ["/path/to/location1", "/path/to/location2"]
-
-    compare_file_counts(cluster1_url, cluster2_url, hdfs_locations)
