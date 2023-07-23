@@ -62,6 +62,16 @@ if __name__ == "__main__":
     cluster1_url = "hdfs://cluster1_hostname:8020"
     cluster2_url = "hdfs://cluster2_hostname:8020"
 
+    # Read HDFS locations from the txt file (one location per line)
+    locations_file = "hdfs_locations.txt"
+    with open(locations_file, "r") as file:
+        hdfs_locations = [line.strip() for line in file if line.strip()]
+
+    if not hdfs_locations:
+        print("No HDFS locations found in the file.")
+    else:
+        compare_file_counts(cluster1_url, cluster2_url, hdfs_locations)
+
     # Specify the HDFS locations you want to check file counts for.
     hdfs_locations = ["/path/to/location1", "/path/to/location2"]
 
