@@ -1,1 +1,54 @@
+import requests
+import csv
+
+# Ambari API details
+ambari_server = "your_ambari_server"
+ambari_port = "your_ambari_port"
+ambari_user = "your_ambari_user"
+ambari_password = "your_ambari_password"
+cluster_name = "your_cluster_name"
+
+# Output CSV file
+output_csv_file = "host_components.csv"
+
+# Ambari API endpoint for hosts
+hosts_endpoint = f"http://{ambari_server}:{ambari_port}/api/v1/clusters/{cluster_name}/hosts"
+
+# Function to get host components and write to CSV
+def get_host_components(host_name):
+    components_endpoint = f"{hosts_endpoint}/{host_name}/host_components"
+    response = requests.get(components_endpoint, auth=(ambari_user, ambari_password))
+    components_data = response.json()
+    return components_data
+
+# Main function
+def main():
+    # Get the list of hosts
+    response = requests.get(hosts_endpoint, auth=(ambari_user, ambari_password))
+    hosts_data = response.json()
+
+    # Open CSV file for writing
+    with open(output_csv_file, mode='w', newline='') as csv_file:
+        fieldnames = ['Host', 'Component']
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        
+        # Write header row
+        writer.writeheader()
+
+        # Iterate through hosts
+        for host in hosts_data['items']:
+            host_name = host['Hosts']['host_name']
+
+            # Get components for the current host
+            components_data = get_host_components(host_name)
+
+            # Write rows for each component
+            for component in components_data['items']:
+                component_name = component['HostRoles']['component_name']
+                writer.writerow({'Host': host_name, 'Component': component_name})
+
+    print(f"Host components list written to {output_csv_file}")
+
+if __name__ == "__main__":
+    main()
 
