@@ -69,3 +69,149 @@ else
   echo "File list not found: $FILE_LIST"
 fi
 
+=========================================================================================================
+
+---
+- name: Example Playbook with Handlers
+  hosts: your_target_hosts
+  tasks:
+    - name: Ensure Apache is installed
+      ansible.builtin.package:
+        name: apache2
+        state: present
+      register: apache_install_result
+
+    - name: Copy Apache configuration file
+      ansible.builtin.copy:
+        src: /path/to/apache.conf
+        dest: /etc/apache2/apache2.conf
+      register: apache_config_copy_result
+
+  handlers:
+    - name: Restart Apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+      when: apache_install_result.changed or apache_config_copy_result.changed
+
+
+---
+- name: Example Playbook with Handlers
+  hosts: your_target_hosts
+  tasks:
+    - name: Ensure Apache is installed
+      ansible.builtin.package:
+        name: apache2
+        state: present
+      notify: 
+        - Restart Apache
+
+    - name: Copy Apache configuration file
+      ansible.builtin.copy:
+        src: /path/to/apache.conf
+        dest: /etc/apache2/apache2.conf
+      notify: 
+        - Restart Apache
+
+  handlers:
+    - name: Restart Apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+=================================================================================
+---
+- name: Example Playbook with Handlers
+  hosts: your_target_hosts
+  tasks:
+    - name: Ensure Apache is installed and Copy Apache configuration file
+      block:
+        - name: Ensure Apache is installed
+          ansible.builtin.package:
+            name: apache2
+            state: present
+          register: apache_install_result
+
+        - name: Copy Apache configuration file
+          ansible.builtin.copy:
+            src: /path/to/apache.conf
+            dest: /etc/apache2/apache2.conf
+          register: apache_config_copy_result
+      changed_when: apache_install_result.changed or apache_config_copy_result.changed
+
+  handlers:
+    - name: Restart Apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+
+===============================================================================================================
+
+---
+directories:
+  - path: "/path/to/your/directory1"
+    symlink_path: "/path/to/your/symlink1"
+    owner: "user1"
+    group: "group1"
+    mode: "0755"
+  - path: "/path/to/your/directory2"
+    symlink_path: "/path/to/your/symlink2"
+    owner: "user2"
+    group: "group2"
+    mode: "0644"
+  # Add more directories as needed
+
+
+
+---
+- name: Create and configure directories
+  hosts: your_target_hosts
+  tasks:
+    - name: Create directories
+      file:
+        path: "{{ item.path }}"
+        state: directory
+      with_items: "{{ directories }}"
+      register: directory_created
+
+    - name: Change ownership and permissions
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      with_items: "{{ directories }}"
+      when: directory_created.results | bool
+
+    - name: Create symlinks
+      file:
+        path: "{{ item.symlink_path }}"
+        src: "{{ item.path }}"
+        state: link
+      with_items: "{{ directories }}"
+      register: symlink_created
+
+    - name: Validate directories and symlinks
+      assert:
+        that:
+          - directory_created.results | bool
+          - symlink_created.results | bool
+
+---
+- name: Apply My Ansible Role
+  hosts: your_target_hosts
+  roles:
+    - my_ansible_role
+
+my_ansible_role/
+|-- tasks/
+|   |-- main.yml
+|-- defaults/
+|   |-- main.yml
+|-- meta/
+|   |-- main.yml
+
+
+
+=====================================================================================
+
