@@ -212,6 +212,56 @@ my_ansible_role/
 |   |-- main.yml
 
 
+============================================
+
+---
+- name: Create and configure directory
+  hosts: your_target_hosts
+  tasks:
+    - name: Create directory
+      file:
+        path: "{{ directory_path }}"
+        state: directory
+      register: directory_created
+
+    - name: Change ownership and permissions
+      become: true
+      ansible.builtin.file:
+        path: "{{ directory_path }}"
+        owner: "{{ owner }}"
+        group: "{{ group }}"
+        mode: "{{ mode }}"
+      when: directory_created.changed
+
+    - name: Create symlink
+      file:
+        path: "{{ symlink_path }}"
+        src: "{{ directory_path }}"
+        state: link
+      register: symlink_created
+
+    - name: Validate directory and symlink
+      assert:
+        that:
+          - directory_created.changed or directory_created.stat.exists
+          - symlink_created.changed or symlink_created.stat.islnk
+
+
+---
+- name: Check Symlink Existence
+  hosts: your_target_hosts
+  tasks:
+    - name: Check if symlink exists
+      stat:
+        path: /path/to/your/symlink
+      register: symlink_stat
+
+    - name: Display the result
+      debug:
+        var: symlink_stat.stat.islnk
+
+
+
 
 =====================================================================================
 
