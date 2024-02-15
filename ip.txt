@@ -1,0 +1,7 @@
+# Loop through each host and get its IP address
+for host in "${hosts[@]}"; do
+    ip_address=$(nslookup "$host" | awk '/^Address: / { print $2 }')
+    
+    # Print the result
+    echo "Host: $host, IP Address: $ip_address"
+done
