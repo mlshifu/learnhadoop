@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# Log file
-log_file="transfer_log.txt"
+# Get current timestamp
+timestamp=$(date +"%Y%m%d%H%M%S")
+
+# Log file with timestamp
+log_file="transfer_log_${timestamp}.txt"
 
 # Clear log file
 > "$log_file"
@@ -17,6 +20,9 @@ serverB="serverB.example.com"
 # Maximum parallelism (change this value to 50)
 max_parallelism=50
 
+# Counter for active background processes
+active_processes=0
+
 # Function to perform SFTP transfer and log information
 perform_sftp_transfer() {
     local source_file="$1"
@@ -29,31 +35,41 @@ perform_sftp_transfer() {
     echo "Start time: $start_time" >> "$log_file"
 
     # SFTP transfer from Server A to Server B
-    echo "Transferring file $source_file to $serverB..."
-    sftp -o "BatchMode yes" -b - "$userB@$serverB" <<EOF >> "$log_file"
+    echo "Transferring file $source_file to $serverB..." >> "$log_file"
+    sftp_output=$(sftp -o "BatchMode yes" -b - "$userB@$serverB" 2>&1 <<EOF >> "$log_file"
 put "$source_file" "$target_dir"
 exit
 EOF
+    )
 
-    # Log end time
-    end_time=$(date +"%Y-%m-%d %H:%M:%S")
-    echo "End time: $end_time" >> "$log_file"
+    # Log sftp output
+    echo "$sftp_output" >> "$log_file"
 
-    # Log file size
-    file_size=$(du -sh "$source_file" | cut -f1)
-    echo "File size: $file_size" >> "$log_file"
+    # Check the exit status of the sftp command
+    if [ $? -eq 0 ] && ! grep -q "File transfer failed" "$log_file"; then
+        # Log end time for successful transfer
+        end_time=$(date +"%Y-%m-%d %H:%M:%S")
+        echo "End time: $end_time" >> "$log_file"
 
-    # Calculate and log transfer time
-    start_timestamp=$(date -d "$start_time" +"%s")
-    end_timestamp=$(date -d "$end_time" +"%s")
-    transfer_time=$((end_timestamp - start_timestamp))
-    echo "Transfer time: $transfer_time seconds" >> "$log_file"
+        # Log file size
+        file_size=$(du -sh "$source_file" | cut -f1)
+        echo "File size: $file_size" >> "$log_file"
 
-    echo "File transfer of $source_file complete."
+        # Calculate and log transfer time
+        start_timestamp=$(date -d "$start_time" +"%s")
+        end_timestamp=$(date -d "$end_time" +"%s")
+        transfer_time=$((end_timestamp - start_timestamp))
+        echo "Transfer time: $transfer_time seconds" >> "$log_file"
+
+        echo "File transfer of $source_file successful." >> "$log_file"
+    else
+        # Log status message for failed transfer
+        echo "File transfer of $source_file failed." >> "$log_file"
+    fi
+
+    # Decrement active process counter after transfer completes
+    active_processes=$((active_processes - 1))
 }
-
-# Counter for active background processes
-active_processes=0
 
 # Loop through each source file from the list and initiate SFTP transfer
 while IFS= read -r source_file; do
@@ -61,11 +77,11 @@ while IFS= read -r source_file; do
     if [ "$active_processes" -ge "$max_parallelism" ]; then
         # Wait for some background processes to finish
         wait -n
-        active_processes=$((active_processes - 1))
     fi
 
     # Perform SFTP transfer in the background
     perform_sftp_transfer "$source_file" "$target_dir" "$userB" "$serverB" &
+    # Increment active process counter
     active_processes=$((active_processes + 1))
 done < "$source_file_list"
 
