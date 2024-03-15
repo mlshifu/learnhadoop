@@ -1,0 +1,2 @@
+hadoop fs -du -h /path/to/your/directory | awk '$1 ~ /^[0-9.]+G/ {print}'
+hadoop fs -du -h /path/to/your/directory | grep ' [0-9.]\+G\>'
