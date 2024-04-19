@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# Prompt user for test name
+read -p "Enter test name: " TEST_NAME
+
+# Get user ID
+USER_ID=$(id -u -n)
+
+# Define output CSV file path
+OUTPUT_FILE="monitoring_results.csv"
+
+# Function to run the specified command with resource monitoring
+run_with_monitoring() {
+    local command="$1"
+    local args=("${@:2}")
+
+    # Start time
+    START_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+
+    # Run the command with time command
+    /usr/bin/time -f "Execution Time: %e seconds\nCPU Usage: %P\nMemory Usage: %M KB" -o /tmp/resource_usage.txt "$command" "${args[@]}"
+
+    # End time
+    END_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+
+    # Extract monitoring results
+    CPU_USAGE=$(grep "CPU Usage" /tmp/resource_usage.txt | awk '{print $3}')
+    MEM_USAGE=$(grep "Memory Usage" /tmp/resource_usage.txt | awk '{print $3}')
+
+    # Calculate execution time
+    START_SECONDS=$(date -d "$START_TIME" +"%s")
+    END_SECONDS=$(date -d "$END_TIME" +"%s")
+    EXECUTION_TIME=$((END_SECONDS - START_SECONDS))
+
+    # Format monitoring results as CSV line
+    CSV_LINE="$TEST_NAME,$USER_ID,$START_TIME,$END_TIME,$EXECUTION_TIME,$CPU_USAGE%,$MEM_USAGE KB"
+
+    # Append CSV line to output file
+    echo "$CSV_LINE" >> "$OUTPUT_FILE"
+
+    # Cleanup temporary file
+    rm /tmp/resource_usage.txt
+}
+
+# Check if test name and command/script are provided as parameters
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <test_name> <command/script> [command_args...]"
+    exit 1
+fi
+
+# Extract test name and command/script from command line parameters
+TEST_NAME="$1"
+shift   # Remove the first parameter (test name)
+COMMAND_OR_SCRIPT="$1"
+shift   # Remove the second parameter (command/script)
+COMMAND_ARGS=("$@")   # Remaining parameters are command arguments
+
+# Run the function to execute the specified command/script with monitoring
+run_with_monitoring "$COMMAND_OR_SCRIPT" "${COMMAND_ARGS[@]}"
+
+echo "Monitoring results appended to: $OUTPUT_FILE"
